@@ -39,7 +39,7 @@ run fully unprivileged.
 %build
 
 %install
-%makeinstall
+%make_install
 
 %post
 %postun
