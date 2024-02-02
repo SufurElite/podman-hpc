@@ -12,7 +12,7 @@ NAMEDSPECS=(*$BASENAME.spec)
 
 # extract name, version, source archive from .spec file
 NAME=$BASENAME
-VERSION=$(rpmspec -q --qf "%{version}" $NAMEDSPECS | tail -1)
+VERSION=$(rpmspec -q --qf "%{version}\n" $NAMEDSPECS | tail -1)
 ARCHIVE=$(rpmspec --srpm -q --qf "%{source}" $NAMEDSPECS)
 
 # write the archive
