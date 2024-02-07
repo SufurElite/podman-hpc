@@ -101,7 +101,7 @@ class ImageStore:
             raise ValueError("Cannot init read-only stroage")
 
         if not os.path.exists(self.base):
-            os.mkdir(self.base, exist_ok=True)
+            os.makedirs(self.base, exist_ok=True)
         for ext in ["", "/l", "-images", "-layers"]:
             pth = os.path.join(self.base, f"overlay{ext}")
             if not os.path.exists(pth):
