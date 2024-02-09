@@ -15,6 +15,8 @@ NAME=$BASENAME
 VERSION=$(rpmspec -q --qf "%{version}\n" $NAMEDSPECS | tail -1)
 ARCHIVE=$(rpmspec --srpm -q --qf "%{source}" $NAMEDSPECS)
 
+mkdir /root/rpmbuild/BUILDROOT/"${BASENAME}-${VERSION}.x86_64"
+
 # write the archive
 mkdir -p $SOURCES
 cd ..
