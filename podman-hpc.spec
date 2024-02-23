@@ -15,7 +15,7 @@
 
 Name:           podman-hpc
 Version:        1.1.0
-Release:        1
+Release:        2
 Summary:	Scripts to enable Podman to run in an HPC environment
 License:        Apache 2.0 
 URL:            https://github.com/nersc/podman-hpc 
