@@ -18,6 +18,7 @@ def fix_paths(monkeypatch):
 def mock_exit(monkeypatch):
     def mock_exit_func(*args):
         return 0
+
     monkeypatch.setattr(sys, "exit", mock_exit_func)
 
 
@@ -75,8 +76,16 @@ def test_run(monkeypatch, fix_paths, mock_exit):
 
 
 def test_shared_run(monkeypatch, fix_paths, mock_podman, mock_exit):
-    sys.argv = ["podman_hpc", "shared-run", "-it", "--rm",
-                "--volume", "/a:/b", "ubuntu", "uptime"]
+    sys.argv = [
+        "podman_hpc",
+        "shared-run",
+        "-it",
+        "--rm",
+        "--volume",
+        "/a:/b",
+        "ubuntu",
+        "uptime",
+    ]
     monkeypatch.setenv("SLURM_LOCALID", "0")
     monkeypatch.setenv("SLURM_STEP_TASKS_PER_NODE", "1")
     phpc.main()
@@ -103,8 +112,16 @@ def test_shared_run(monkeypatch, fix_paths, mock_podman, mock_exit):
 
 
 def test_run_fail(monkeypatch, fix_paths, mock_podman, mock_exit):
-    sys.argv = ["podman_hpc", "shared-run", "-it", "--rm",
-                "-e", "FAILME=1", "ubuntu", "uptime"]
+    sys.argv = [
+        "podman_hpc",
+        "shared-run",
+        "-it",
+        "--rm",
+        "-e",
+        "FAILME=1",
+        "ubuntu",
+        "uptime",
+    ]
     monkeypatch.setenv("SLURM_LOCALID", "0")
     monkeypatch.setenv("SLURM_STEP_TASKS_PER_NODE", "1")
     monkeypatch.setenv("PODMANHPC_WAIT_TIMEOUT", "0.5")
@@ -118,8 +135,17 @@ def test_run_fail(monkeypatch, fix_paths, mock_podman, mock_exit):
 
 
 def test_shared_run_auto(monkeypatch, fix_paths, mock_podman, mock_exit):
-    sys.argv = ["podman_hpc", "run", "-it", "--rm", "--mpi",
-                "--volume", "/a:/b", "ubuntu", "uptime"]
+    sys.argv = [
+        "podman_hpc",
+        "run",
+        "-it",
+        "--rm",
+        "--mpi",
+        "--volume",
+        "/a:/b",
+        "ubuntu",
+        "uptime",
+    ]
     monkeypatch.setenv("SLURM_LOCALID", "0")
     monkeypatch.setenv("SLURM_STEP_TASKS_PER_NODE", "1")
     test_dir = os.path.dirname(__file__)
@@ -143,10 +169,10 @@ def test_shared_run_auto(monkeypatch, fix_paths, mock_podman, mock_exit):
     assert "PALS_*" in exec
 
 
-def test_pull(monkeypatch, fix_paths, mock_podman, mock_exit,
-              tmp_path, capsys):
-    sys.argv = ["podman_hpc", "--squash-dir", str(tmp_path),
-                "pull", "alpine"]
+def test_pull(
+    monkeypatch, fix_paths, mock_podman, mock_exit, tmp_path, capsys
+):
+    sys.argv = ["podman_hpc", "--squash-dir", str(tmp_path), "pull", "alpine"]
     tdir = os.path.dirname(__file__)
     src = os.path.join(tdir, "storage")
     monkeypatch.setenv("PODMANHPC_GRAPH_ROOT", src)
@@ -158,32 +184,34 @@ def test_pull(monkeypatch, fix_paths, mock_podman, mock_exit,
     assert "pull " in out
     assert src in out
     assert captured.err == ""
-    imagej = os.path.join(tmp_path, "overlay-images",
-                          "images.json")
+    imagej = os.path.join(tmp_path, "overlay-images", "images.json")
     d = json.load(open(imagej))
     id = "9c6f0724472873bb50a2ae67a9e7adcb57673a183cea8b06eb778dca859181b5"
-    assert d[0]['id'] == id
+    assert d[0]["id"] == id
     run = out.split("\n")[-2].split()
     assert "/mksq" in run
     assert "/sqout" in run
-    sys.argv = ["podman_hpc", "--squash-dir", str(tmp_path),
-                "rmsqi", "alpine"]
+    sys.argv = ["podman_hpc", "--squash-dir", str(tmp_path), "rmsqi", "alpine"]
     phpc.main()
     d = json.load(open(imagej))
     assert len(d) == 0
 
 
 def test_migrate(fix_paths, mock_podman, mock_exit, tmp_path):
-    sys.argv = ["podman_hpc", "--squash-dir",
-                str(tmp_path), "migrate", "ubuntu"]
+    sys.argv = [
+        "podman_hpc",
+        "--squash-dir",
+        str(tmp_path),
+        "migrate",
+        "ubuntu",
+    ]
     phpc.main()
     assert os.path.exists(os.path.join(tmp_path, "overlay"))
     # TODO: Add more checks
 
 
 def test_modules(monkeypatch, fix_paths, mock_exit):
-    sys.argv = ["podman_hpc", "run", "-it", "--rm", "--gpu",
-                "ubuntu"]
+    sys.argv = ["podman_hpc", "run", "-it", "--rm", "--gpu", "ubuntu"]
     global args_passed
     args_passed = []
 
