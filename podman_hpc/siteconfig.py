@@ -59,7 +59,7 @@ class SiteConfig:
     hooks_dir = f"{sys.prefix}/share/containers/oci/hooks.d"
     graph_root = f"{_xdg_base}/storage"
     squash_dir = os.environ.get(
-        "SQUASH_DIR", f'{os.environ.get("SCRATCH", "/tmp")}/storage'
+        "SQUASH_DIR", f'{os.environ.get("SCRATCH", f"/tmp/storage/{_uid}")}/storage'
     )
     modules_dir = "/etc/podman_hpc/modules.d"
     shared_run_exec_args = ["-e", "SLURM_*", "-e", "PALS_*", "-e", "PMI_*"]
