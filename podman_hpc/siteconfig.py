@@ -3,6 +3,7 @@ import os
 import shutil
 import toml
 import re
+import pwd
 from yaml import load
 from yaml import FullLoader
 from copy import deepcopy
@@ -12,6 +13,13 @@ _ENV_PREFIX = "PODMANHPC"
 _MOD_ENV = f"{_ENV_PREFIX}_MODULES_DIR"
 _HOOKS_ANNO = "podman_hpc.hook_tool"
 _CONF_ENV = f"{_ENV_PREFIX}_CONFIG_FILE"
+
+
+def get_username(uid: int) -> str:
+    try:
+        return pwd.getpwuid(uid).pw_name
+    except KeyError:
+        raise Exception(f"UID {uid} not found")
 
 
 class SiteConfig:
@@ -52,14 +60,16 @@ class SiteConfig:
         "config_home_template",
     ]
     _uid = os.getuid()
-    _xdg_base = f"/tmp/{_uid}_hpc"
+    _username = get_username(_uid)
+    _xdg_base = f"/scratch/{_username}/podman_hpc"
     config_home = f"{_xdg_base}/config"
     run_root = _xdg_base
     additional_stores = []
     hooks_dir = f"{sys.prefix}/share/containers/oci/hooks.d"
     graph_root = f"{_xdg_base}/storage"
     squash_dir = os.environ.get(
-        "SQUASH_DIR", f'{os.environ.get("SCRATCH", f"/tmp/storage/{_uid}")}/storage'
+        "SQUASH_DIR",
+        f"/{_xdg_base}/squash",
     )
     modules_dir = "/etc/podman_hpc/modules.d"
     shared_run_exec_args = ["-e", "SLURM_*", "-e", "PALS_*", "-e", "PMI_*"]
@@ -336,7 +346,8 @@ class SiteConfig:
         Write out a conf file
         """
         os.makedirs(
-            f"/tmp/containers-user-{self._uid}/containers", exist_ok=True
+            f"/{self._xdg_base}/containers",
+            exist_ok=True,
         )
         os.makedirs(f"{self.config_home}/containers", exist_ok=True)
         fp = os.path.join(self.config_home, "containers", filename)
