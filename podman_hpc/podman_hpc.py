@@ -7,11 +7,10 @@ import re
 import time
 import click
 
-from build.lib.podman_hpc import siteconfig
 from . import click_passthrough as cpt
 from .migrate2scratch import MigrateUtils
 from .migrate2scratch import ImageStore
-from .siteconfig import SiteConfig
+from .siteconfig import SiteConfig, get_username
 from multiprocessing import Process
 from subprocess import Popen, PIPE
 
@@ -259,7 +258,7 @@ def _shared_run(conf, run_args, **site_opts):
     ntasks_raw = os.environ.get(conf.tasks_per_node_var, "1")
     ntasks = int(re.search(conf.ntasks_pattern, ntasks_raw)[0])
     uid = os.getuid()
-    username = siteconfig.get_username(uid)
+    username = get_username(uid)
     container_name = f"username-{username}-pid-{os.getppid()}"
     sock_name = f"/scratch/{username}/podman_hpc/{container_name}"
 
