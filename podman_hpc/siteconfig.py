@@ -69,7 +69,7 @@ class SiteConfig:
     graph_root = f"{_xdg_base}/storage"
     squash_dir = os.environ.get(
         "SQUASH_DIR",
-        f"/{_xdg_base}/squash",
+        f"{_xdg_base}/squash",
     )
     modules_dir = "/etc/podman_hpc/modules.d"
     shared_run_exec_args = ["-e", "SLURM_*", "-e", "PALS_*", "-e", "PMI_*"]
