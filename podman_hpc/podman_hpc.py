@@ -6,6 +6,8 @@ import socket
 import re
 import time
 import click
+
+from build.lib.podman_hpc import siteconfig
 from . import click_passthrough as cpt
 from .migrate2scratch import MigrateUtils
 from .migrate2scratch import ImageStore
@@ -256,8 +258,10 @@ def _shared_run(conf, run_args, **site_opts):
     localid = os.environ.get(conf.localid_var)
     ntasks_raw = os.environ.get(conf.tasks_per_node_var, "1")
     ntasks = int(re.search(conf.ntasks_pattern, ntasks_raw)[0])
-    container_name = f"uid-{os.getuid()}-pid-{os.getppid()}"
-    sock_name = f"/tmp/uid-{os.getuid()}-pid-{os.getppid()}"
+    uid = os.getuid()
+    username = siteconfig.get_username(uid)
+    container_name = f"username-{username}-pid-{os.getppid()}"
+    sock_name = f"/scratch/{username}/podman_hpc/{container_name}"
 
     # construct run and exec commands from user options
     # We need to filter out any run args in the run_args
