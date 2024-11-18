@@ -88,12 +88,7 @@ class SiteConfig:
     source = dict()
 
     def __init__(self, squash_dir=None, log_level=None):
-        # getlogin may fail on a compute node
-        try:
-            self.user = os.getlogin()
-        except Exception:
-            self.user = os.environ["USER"]
-        # TODO: move these as a test at the end
+        self.user = self._username
         self.podman_bin = self.trywhich("podman")
         self.mount_program = self.trywhich("fuse-overlayfs-wrap")
         try:
