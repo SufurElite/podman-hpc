@@ -242,6 +242,7 @@ class SiteConfig:
 
         def _templ(val):
             val = val.replace("{{ user }}", self.user)
+            val = val.replace("{{ slurm_job_id }}", self.slurm_job_id)
             val = val.replace("{{ uid }}", str(self._uid))
             for pat in re.findall(r"{{ env\.[A-Za-z0-9]+ }}", val):
                 envname = pat.replace("{{ env.", "").replace(" }}", "")
