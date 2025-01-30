@@ -29,8 +29,8 @@ class DefaultCommandGroup(click.Group):
             self.default_command_fn = cmd
         else:
             warnings.warn(
-                f"{self.name}.default_command_fn is already set: " +
-                f"{self.default_command_fn}",
+                f"{self.name}.default_command_fn is already set: "
+                + f"{self.default_command_fn}",
                 UserWarning,
                 stacklevel=2,
             )
@@ -111,6 +111,7 @@ def customize_help(cls):
     click help formatting.
 
     """
+
     # wrappers to modify, otherwise just replace
     def mod__init__(cls_init):
         @functools.wraps(cls_init)

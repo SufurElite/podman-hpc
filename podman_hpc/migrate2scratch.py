@@ -101,7 +101,7 @@ class ImageStore:
             raise ValueError("Cannot init read-only stroage")
 
         if not os.path.exists(self.base):
-            os.mkdir(self.base)
+            os.makedirs(self.base, exist_ok=True)
         for ext in ["", "/l", "-images", "-layers"]:
             pth = os.path.join(self.base, f"overlay{ext}")
             if not os.path.exists(pth):
@@ -392,14 +392,22 @@ class MigrateUtils:
         # with the tgt image and then run mksq in it.
         # This requires a statically linked mksquashfs
         com = [
-            self.podman_bin, "run", "--rm",
-            "--root", self.src.base,
-            "-v", f"{_mksqstatic}:{self._mksq_inside}",
-            "-v", f"{self.dst.base}/overlay/l/:/sqout",
-            "--user", "0",
-            "--entrypoint", self._mksq_inside,
+            self.podman_bin,
+            "run",
+            "--rm",
+            "--root",
+            self.src.base,
+            "-v",
+            f"{_mksqstatic}:{self._mksq_inside}",
+            "-v",
+            f"{self.dst.base}/overlay/l/:/sqout",
+            "--user",
+            "0",
+            "--entrypoint",
+            self._mksq_inside,
             img_id,
-            "/", f"/sqout/{ln}.squash",
+            "/",
+            f"/sqout/{ln}.squash",
         ]
         com.extend(self.mksq_options)
         # Exclude these

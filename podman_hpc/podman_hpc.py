@@ -6,10 +6,11 @@ import socket
 import re
 import time
 import click
+
 from . import click_passthrough as cpt
 from .migrate2scratch import MigrateUtils
 from .migrate2scratch import ImageStore
-from .siteconfig import SiteConfig
+from .siteconfig import SiteConfig, get_username
 from multiprocessing import Process
 from subprocess import Popen, PIPE
 
@@ -40,10 +41,10 @@ def pmi_fd():
 
     if "PMI_FD" not in os.environ:
         return []
-    pmifd = int(os.environ['PMI_FD'])
+    pmifd = int(os.environ["PMI_FD"])
     os.dup2(pmifd, 3)
     os.set_inheritable(3, True)
-    os.environ['PMI_FD'] = "3"
+    os.environ["PMI_FD"] = "3"
     return ["--preserve-fds", "1"]
 
 
@@ -128,7 +129,7 @@ def podhpc(ctx, additional_stores, squash_dir, log_level):
     # defcmd = ctx.command.default_command_fn
     invcmd = ctx.command.get_command(ctx, ctx.invoked_subcommand)
     for k, v in conf.sitemods.get(ctx.invoked_subcommand, {}).items():
-        if 'cli_arg' not in v:
+        if "cli_arg" not in v:
             continue
         invcmd = click.option(
             f"--{v['cli_arg']}",
@@ -171,6 +172,7 @@ def rmsqi(siteconf, image):
     mu = MigrateUtils(conf=siteconf)
     mu.remove_image(image)
 
+
 # podman-hpc images subcommand #############################################
 @pass_siteconf
 @click.pass_context
@@ -180,6 +182,7 @@ def images(ctx, siteconf, image, podman_args, **site_opts):
     cmd = [siteconf.podman_bin, "images"]
     cmd.extend(podman_args)
     cmd.extend(siteconf.get_cmd_extensions("images", site_opts))
+
 
 # podman-hpc pull subcommand (modified) ####################################
 @podhpc.command(
@@ -207,6 +210,7 @@ def pull(ctx, siteconf, image, podman_args, **site_opts):
     else:
         sys.stderr.write("Pull failed.\n")
         sys.exit(proc.returncode)
+
 
 # podman-hpc shared-run subcommand #########################################
 @podhpc.command(
@@ -242,19 +246,27 @@ def shared_run(conf, run_args, **site_opts):
     # click.echo(f"Launching a shared-run with args: {sys.argv}")
     _shared_run(conf, run_args, **site_opts)
 
+
 def _shared_run(conf, run_args, **site_opts):
     """
     Internal function for the shared_run.  This is so we can
     also call it when the user does run but enabled a module
-    that has shared_run set to True. 
+    that has shared_run set to True.
     """
 
     localid = os.environ.get(conf.localid_var)
     ntasks_raw = os.environ.get(conf.tasks_per_node_var, "1")
     ntasks = int(re.search(conf.ntasks_pattern, ntasks_raw)[0])
-    container_name = f"uid-{os.getuid()}-pid-{os.getppid()}"
-    sock_name = f"/tmp/uid-{os.getuid()}-pid-{os.getppid()}"
+    uid = os.getuid()
+    username = get_username(uid)
+    container_name = f"username-{username}-pid-{os.getppid()}"
 
+    slurm_job_id = os.getenv("SLURM_JOB_ID")
+    assert (
+        slurm_job_id is not None
+    ), "SLURM_JOB_ID is not set as an os environment variable"
+
+    sock_name = f"/tmp/{slurm_job_id}/podman_hpc/{container_name}"
     # construct run and exec commands from user options
     # We need to filter out any run args in the run_args
     cmd = [conf.podman_bin, "run", "--help"]
@@ -266,11 +278,11 @@ def _shared_run(conf, run_args, **site_opts):
             continue
         break
     image = run_args[idx]
-    container_cmd = run_args[idx+1:]
+    container_cmd = run_args[idx + 1 :]
     # TODO: maybe do some validation on the iamge and container_cmd
 
     options = sys.argv[
-        sys.argv.index("shared-run") + 1: sys.argv.index(image)
+        sys.argv.index("shared-run") + 1 : sys.argv.index(image)
     ]
 
     run_cmd = [conf.podman_bin, "run", "--rm", "-d", "--name", container_name]
@@ -299,9 +311,10 @@ def _shared_run(conf, run_args, **site_opts):
     monitor_thread = None
     run_thread = None
     proc = None
-    if (localid is None or int(localid) == 0):
-        monitor_thread = Process(target=monitor, args=(sock_name, ntasks,
-                                                       container_name, conf))
+    if localid is None or int(localid) == 0:
+        monitor_thread = Process(
+            target=monitor, args=(sock_name, ntasks, container_name, conf)
+        )
         monitor_thread.start()
         run_thread = Process(target=shared_run_exec, args=(run_cmd, conf.env))
         run_thread.start()
@@ -320,8 +333,8 @@ def _shared_run(conf, run_args, **site_opts):
         comm = ["wait", "--condition", "running", container_name]
         podman_devnull(comm, conf)
         fds = [0, 1, 2]
-        if 'PMI_FD' in os.environ:
-            fds.append(int(os.environ['PMI_FD']))
+        if "PMI_FD" in os.environ:
+            fds.append(int(os.environ["PMI_FD"]))
             conf.env["PMI_FD"] = os.environ["PMI_FD"]
         proc = Popen(exec_cmd, env=conf.env, pass_fds=fds)
         proc.communicate()
@@ -372,8 +385,7 @@ def call_podman(ctx, siteconf, help, podman_args, **site_opts):
         ctx.command.format_options(ctx, formatter)
         app_options = ""
         if formatter.getvalue():
-            app_options = (
-                f"{app_name.capitalize()} {formatter.getvalue()}\n")
+            app_options = f"{app_name.capitalize()} {formatter.getvalue()}\n"
 
         cmd = [siteconf.podman_bin, ctx.info_name, "--help"]
         proc = Popen(cmd, env=siteconf.env, stdout=PIPE)
@@ -394,7 +406,7 @@ def call_podman(ctx, siteconf, help, podman_args, **site_opts):
                     sys.argv[idx] = "shared-run"
             _shared_run(siteconf, podman_args, **site_opts)
         else:
-            if 'PMI_FD' in os.environ:
+            if "PMI_FD" in os.environ:
                 siteconf.env["PMI_FD"] = os.environ["PMI_FD"]
             os.execve(cmd[0], cmd, siteconf.env)
 
@@ -431,7 +443,7 @@ def send_complete(sockfile, lid):
     try:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(sockfile)
-        s.send(bytes(lid, 'utf-8'))
+        s.send(bytes(lid, "utf-8"))
         s.close()
     except Exception as ex:
         sys.stderr.write(f"send_complete failed for {lid}\n{ex}\n")

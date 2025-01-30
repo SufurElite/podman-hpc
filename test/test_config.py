@@ -93,8 +93,9 @@ def test_conf_funcs(fix_paths, monkeypatch, tmp_path, capsys):
 def test_typing(fix_paths, monkeypatch, tmp_path):
     monkeypatch.setenv("PODMANHPC_CONFIG_HOME", str(tmp_path))
     monkeypatch.setenv("PODMANHPC_DEFAULT_ARGS", "a,b")
-    monkeypatch.setenv("PODMANHPC_DEFAULT_RUN_ARGS_TEMPLATE",
-                       "{{ uid }},{{ user }}")
+    monkeypatch.setenv(
+        "PODMANHPC_DEFAULT_RUN_ARGS_TEMPLATE", "{{ uid }},{{ user }}"
+    )
     conf = config.SiteConfig(squash_dir="/tmp")
     assert isinstance(conf.default_args, list)
     assert conf.default_args == ["a", "b"]

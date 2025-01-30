@@ -15,9 +15,8 @@
 
 Name:           podman-hpc
 Version:        1.1.0
-Release:        1
+Release:        2
 Summary:	Scripts to enable Podman to run in an HPC environment
-# FIXME: Select a correct license from https://github.com/openSUSE/spec-cleaner#spdx-licenses
 License:        Apache 2.0 
 URL:            https://github.com/nersc/podman-hpc 
 Source:         %{name}-%{version}.tar.gz
@@ -27,6 +26,8 @@ Requires:       python3-toml
 Requires:       python3-click
 Requires:       squashfuse
 Requires:       mksquashfs-static
+
+%global debug_package %{nil}
 
 %description
 Podman-hpc is a set of scripts around podman to enable it to work
@@ -39,7 +40,7 @@ run fully unprivileged.
 %build
 
 %install
-%makeinstall
+%make_install
 
 %post
 %postun

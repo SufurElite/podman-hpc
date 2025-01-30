@@ -9,11 +9,12 @@ import time
 import pytest
 
 
-_libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+_libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
 
 
-@pytest.mark.skipif(not os.path.exists("/proc"),
-                    reason="requires running on linux system")
+@pytest.mark.skipif(
+    not os.path.exists("/proc"), reason="requires running on linux system"
+)
 def test_hook(monkeypatch, tmp_path):
     tdir = os.path.dirname(__file__)
     # conf = os.path.join(tdir, "test.yaml")
@@ -22,35 +23,28 @@ def test_hook(monkeypatch, tmp_path):
     rdir = os.path.join(tmp_path, "root")
     os.mkdir(rdir)
     os.mkdir(os.path.join(rdir, "etc"))
-    env = ["ENABLE_MODULE1=1",
-           f"LOG_PLUGIN={log_file}",
-           f"{ht._MOD_ENV}={conf}",
-           ]
-    cconf = {
-        "root": {
-            "path": rdir
-            },
-        "process": {"env": env}
-    }
+    env = [
+        "ENABLE_MODULE1=1",
+        f"LOG_PLUGIN={log_file}",
+        f"{ht._MOD_ENV}={conf}",
+    ]
+    cconf = {"root": {"path": rdir}, "process": {"env": env}}
     with open(os.path.join(tmp_path, "config.json"), "w") as f:
         json.dump(cconf, f)
     pid = os.fork()
     if pid == 0:
-        uidmapfile = '/proc/self/uid_map'
+        uidmapfile = "/proc/self/uid_map"
         uidmap = "0 %d 1" % os.getuid()
         _libc.unshare(0x00020000 | 0x10000000 | 0x20000000)
         print("Writing uidmap = '%s' to '%s'" % (uidmap, uidmapfile))
-        with open(uidmapfile, 'w') as file:
+        with open(uidmapfile, "w") as file:
             file.write(uidmap)
         time.sleep(4)
         os._exit(0)
     time.sleep(1)
     ht.setns(pid, "user")
 
-    hconf = {
-            'pid': pid,
-            'annotations': {}
-           }
+    hconf = {"pid": pid, "annotations": {}}
     sys.stdin = io.StringIO(json.dumps(hconf))
     here = os.getcwd()
     sys.argv = [sys.argv[0]]

@@ -8,17 +8,14 @@ BASENAME=$(basename $DIRECTORY)
 
 # try to detect a .spec file in source dir
 cd $DIRECTORY
-shopt -s nullglob
 NAMEDSPECS=(*$BASENAME.spec)
-ALLSPECS=(*.spec)
-: "${SPEC:=${NAMEDSPECS[0]}}"
-: "${SPEC:=${ALLSPECS[0]}}"
-shopt -u nullglob
 
 # extract name, version, source archive from .spec file
-NAME=$(rpmspec -q --qf "%{name}" $SPEC 2>/dev/null)
-VERSION=$(rpmspec -q --qf "%{version}" $SPEC 2>/dev/null)
-ARCHIVE=$(rpmspec --srpm -q --qf "%{source}" $SPEC 2>/dev/null)
+NAME=$BASENAME
+VERSION=$(rpmspec -q --qf "%{version}\n" $NAMEDSPECS | tail -1)
+ARCHIVE=$(rpmspec --srpm -q --qf "%{source}" $NAMEDSPECS)
+
+mkdir /root/rpmbuild/BUILDROOT/"${BASENAME}-${VERSION}.x86_64"
 
 # write the archive
 mkdir -p $SOURCES

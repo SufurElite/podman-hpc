@@ -3,6 +3,7 @@ import os
 import shutil
 import toml
 import re
+import pwd
 from yaml import load
 from yaml import FullLoader
 from copy import deepcopy
@@ -12,6 +13,17 @@ _ENV_PREFIX = "PODMANHPC"
 _MOD_ENV = f"{_ENV_PREFIX}_MODULES_DIR"
 _HOOKS_ANNO = "podman_hpc.hook_tool"
 _CONF_ENV = f"{_ENV_PREFIX}_CONFIG_FILE"
+_SLURM_JOB_ID = os.getenv("SLURM_JOB_ID")
+assert (
+    _SLURM_JOB_ID is not None
+), "SLURM_JOB_ID is not set as an os environment variable"
+
+
+def get_username(uid: int) -> str:
+    try:
+        return pwd.getpwuid(uid).pw_name
+    except KeyError:
+        raise Exception(f"UID {uid} not found")
 
 
 class SiteConfig:
@@ -25,30 +37,43 @@ class SiteConfig:
     """
 
     _default_conf_file = "/etc/podman_hpc/podman_hpc.yaml"
-    _valid_params = ["podman_bin", "mount_program", "modules_dir",
-                     "shared_run_exec_args", "shared_run_command",
-                     "graph_root", "run_root",
-                     "additional_stores", "hooks_dir",
-                     "localid_var", "tasks_per_node_var", "ntasks_pattern",
-                     "config_home", "mksquashfs_bin",
-                     "wait_timeout", "wait_poll_interval",
-                     "use_default_args",
-                     ]
-    _valid_templates = ["shared_run_args_template",
-                        "graph_root_template",
-                        "run_root_template",
-                        "additional_stores_template",
-                        "config_home_template"
-                        ]
+    _valid_params = [
+        "podman_bin",
+        "mount_program",
+        "modules_dir",
+        "shared_run_exec_args",
+        "shared_run_command",
+        "graph_root",
+        "run_root",
+        "additional_stores",
+        "hooks_dir",
+        "localid_var",
+        "tasks_per_node_var",
+        "ntasks_pattern",
+        "config_home",
+        "mksquashfs_bin",
+        "wait_timeout",
+        "wait_poll_interval",
+        "use_default_args",
+    ]
+    _valid_templates = [
+        "shared_run_args_template",
+        "graph_root_template",
+        "run_root_template",
+        "additional_stores_template",
+        "config_home_template",
+    ]
     _uid = os.getuid()
-    _xdg_base = f"/tmp/{_uid}_hpc"
+    _username = get_username(_uid)
+    _xdg_base = f"/tmp/{_SLURM_JOB_ID}/podman_hpc"
     config_home = f"{_xdg_base}/config"
     run_root = _xdg_base
     additional_stores = []
     hooks_dir = f"{sys.prefix}/share/containers/oci/hooks.d"
     graph_root = f"{_xdg_base}/storage"
     squash_dir = os.environ.get(
-        "SQUASH_DIR", f'{os.environ.get("SCRATCH", "/tmp")}/storage'
+        "SQUASH_DIR",
+        f"{_xdg_base}/squash",
     )
     modules_dir = "/etc/podman_hpc/modules.d"
     shared_run_exec_args = ["-e", "SLURM_*", "-e", "PALS_*", "-e", "PMI_*"]
@@ -59,7 +84,7 @@ class SiteConfig:
     runtime = "runc"
     localid_var = "SLURM_LOCALID"
     tasks_per_node_var = "SLURM_STEP_TASKS_PER_NODE"
-    ntasks_pattern = r'[0-9]+'
+    ntasks_pattern = r"[0-9]+"
     mksquashfs_bin = "mksquashfs.static"
     wait_poll_interval = 0.2
     wait_timeout = 10
@@ -67,13 +92,8 @@ class SiteConfig:
     source = dict()
 
     def __init__(self, squash_dir=None, log_level=None):
-
-        # getlogin may fail on a compute node
-        try:
-            self.user = os.getlogin()
-        except Exception:
-            self.user = os.environ["USER"]
-        # TODO: move these as a test at the end
+        self.user = self._username
+        self.slurm_job_id = _SLURM_JOB_ID
         self.podman_bin = self.trywhich("podman")
         self.mount_program = self.trywhich("fuse-overlayfs-wrap")
         try:
@@ -93,49 +113,58 @@ class SiteConfig:
         self.read_site_modules()
 
         if isinstance(self.wait_poll_interval, str):
-            self.wait_poll_interval = \
-                float(self.wait_poll_interval)
+            self.wait_poll_interval = float(self.wait_poll_interval)
         if isinstance(self.wait_timeout, str):
             self.wait_timeout = float(self.wait_timeout)
 
         if self.use_default_args is True:
             self.default_args = [
-                    "--root", self.graph_root,
-                    "--runroot", self.run_root,
-                    "--storage-opt",
-                    f"mount_program={self.mount_program}",
-                    "--cgroup-manager", "cgroupfs",
-                    ]
+                "--root",
+                self.graph_root,
+                "--runroot",
+                self.run_root,
+                "--storage-opt",
+                f"mount_program={self.mount_program}",
+                "--cgroup-manager",
+                "cgroupfs",
+            ]
             self.default_run_args = [
-                    "--storage-opt",
-                    "ignore_chown_errors=true",                    
-                    "--storage-opt",
-                    f"additionalimagestore={self.additionalimagestore()}",
-                    "--hooks-dir", self.hooks_dir,
-                    "--env", f"{_MOD_ENV}={self.modules_dir}",
-                    "--annotation", f"{_HOOKS_ANNO}=true",
-                    "--security-opt", "seccomp=unconfined",
-                    ]
+                "--storage-opt",
+                "ignore_chown_errors=true",
+                "--storage-opt",
+                f"additionalimagestore={self.additionalimagestore()}",
+                "--hooks-dir",
+                self.hooks_dir,
+                "--env",
+                f"{_MOD_ENV}={self.modules_dir}",
+                "--annotation",
+                f"{_HOOKS_ANNO}=true",
+                "--security-opt",
+                "seccomp=unconfined",
+            ]
             self.default_build_args = [
-                    "--hooks-dir", self.hooks_dir,
-                    "--env", f"{_MOD_ENV}={self.modules_dir}",
-                    "--annotation", f"{_HOOKS_ANNO}=true",
-                    ]
+                "--hooks-dir",
+                self.hooks_dir,
+                "--env",
+                f"{_MOD_ENV}={self.modules_dir}",
+                "--annotation",
+                f"{_HOOKS_ANNO}=true",
+            ]
             self.default_pull_args = [
-                    "--storage-opt",
-                    "ignore_chown_errors=true",
-                    ]
+                "--storage-opt",
+                "ignore_chown_errors=true",
+            ]
             self.default_images_args = [
-                    "--storage-opt",
-                    f"additionalimagestore={self.additionalimagestore()}",
-                    ]
+                "--storage-opt",
+                f"additionalimagestore={self.additionalimagestore()}",
+            ]
         else:
             self.default_args = []
             self.default_run_args = []
             self.default_build_args = []
             self.default_pull_args = []
             self.default_images_args = []
-        
+
         self.log_level = log_level
 
     def dump_config(self):
@@ -196,9 +225,10 @@ class SiteConfig:
         if setval:
             # Expand to a list if the type should be a list
             # Assumes a common seperated string
-            if isinstance(getattr(self, attr), list) and \
-               isinstance(newval, str):
-                newval = newval.split(',')
+            if isinstance(getattr(self, attr), list) and isinstance(
+                newval, str
+            ):
+                newval = newval.split(",")
             setattr(self, attr, newval)
             self.source[attr] = source
         else:
@@ -209,10 +239,12 @@ class SiteConfig:
         """
         Helper function to convert templates
         """
+
         def _templ(val):
             val = val.replace("{{ user }}", self.user)
+            val = val.replace("{{ slurm_job_id }}", self.slurm_job_id)
             val = val.replace("{{ uid }}", str(self._uid))
-            for pat in re.findall(r'{{ env\.[A-Za-z0-9]+ }}', val):
+            for pat in re.findall(r"{{ env\.[A-Za-z0-9]+ }}", val):
                 envname = pat.replace("{{ env.", "").replace(" }}", "")
                 val = val.replace(pat, os.environ[envname])
             return val
@@ -278,7 +310,7 @@ class SiteConfig:
     def additionalimagestore(self):
         ais = [self.squash_dir]
         ais.extend(self.additional_stores)
-        return ','.join(ais)
+        return ",".join(ais)
 
     def config_storage(self, additional_stores=None):
         """
@@ -315,7 +347,8 @@ class SiteConfig:
         Write out a conf file
         """
         os.makedirs(
-            f"/tmp/containers-user-{self._uid}/containers", exist_ok=True
+            f"/{self._xdg_base}/containers",
+            exist_ok=True,
         )
         os.makedirs(f"{self.config_home}/containers", exist_ok=True)
         fp = os.path.join(self.config_home, "containers", filename)
@@ -356,7 +389,7 @@ class SiteConfig:
         else:
             pass
         for mod, mconf in self.sitemods.get(subcommand, {}).items():
-            if 'cli_arg' not in mconf:
+            if "cli_arg" not in mconf:
                 continue
             cli_arg = mconf["cli_arg"].replace("-", "_")
             if args.get(cli_arg, False):

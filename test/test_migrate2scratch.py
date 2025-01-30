@@ -9,13 +9,13 @@ def get_count(fn, img):
     images = json.load(open(fn))
     ct = 0
     for i in images:
-        for n in i['names']:
+        for n in i["names"]:
             if n == img:
                 ct += 1
     return ct
 
 
-class mockproc():
+class mockproc:
     returncode = 0
 
     def __init__(self, rcode=None):
