@@ -65,7 +65,7 @@ class SiteConfig:
     ]
     _uid = os.getuid()
     _username = get_username(_uid)
-    _xdg_base = f"/scratch/{_SLURM_JOB_ID}/podman_hpc"
+    _xdg_base = f"/tmp/{_SLURM_JOB_ID}/podman_hpc"
     config_home = f"{_xdg_base}/config"
     run_root = _xdg_base
     additional_stores = []
