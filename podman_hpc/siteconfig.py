@@ -13,6 +13,10 @@ _ENV_PREFIX = "PODMANHPC"
 _MOD_ENV = f"{_ENV_PREFIX}_MODULES_DIR"
 _HOOKS_ANNO = "podman_hpc.hook_tool"
 _CONF_ENV = f"{_ENV_PREFIX}_CONFIG_FILE"
+_SLURM_JOB_ID = os.getenv("SLURM_JOB_ID")
+assert (
+    _SLURM_JOB_ID is not None
+), "SLURM_JOB_ID is not set as an os environment variable"
 
 
 def get_username(uid: int) -> str:
@@ -61,7 +65,7 @@ class SiteConfig:
     ]
     _uid = os.getuid()
     _username = get_username(_uid)
-    _xdg_base = f"/scratch/{_username}/podman_hpc"
+    _xdg_base = f"/scratch/{_SLURM_JOB_ID}/podman_hpc"
     config_home = f"{_xdg_base}/config"
     run_root = _xdg_base
     additional_stores = []
@@ -89,6 +93,7 @@ class SiteConfig:
 
     def __init__(self, squash_dir=None, log_level=None):
         self.user = self._username
+        self.slurm_job_id = _SLURM_JOB_ID
         self.podman_bin = self.trywhich("podman")
         self.mount_program = self.trywhich("fuse-overlayfs-wrap")
         try:

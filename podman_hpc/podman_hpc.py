@@ -260,8 +260,13 @@ def _shared_run(conf, run_args, **site_opts):
     uid = os.getuid()
     username = get_username(uid)
     container_name = f"username-{username}-pid-{os.getppid()}"
-    sock_name = f"/scratch/{username}/podman_hpc/{container_name}"
 
+    slurm_job_id = os.getenv("SLURM_JOB_ID")
+    assert (
+        slurm_job_id is not None
+    ), "SLURM_JOB_ID is not set as an os environment variable"
+
+    sock_name = f"/tmp/{slurm_job_id}/podman_hpc/{container_name}"
     # construct run and exec commands from user options
     # We need to filter out any run args in the run_args
     cmd = [conf.podman_bin, "run", "--help"]
